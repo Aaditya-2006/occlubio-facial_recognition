@@ -82,15 +82,15 @@ def main():
             cv2.putText(vis, f"t={t:6.2f}s", (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             if writer:
                 writer.write(vis)
-            if not args.no_display:
-                cv2.imshow("identify_video", vis)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
+            # if not args.no_display:
+               # cv2.imshow("identify_video", vis)
+                # if cv2.waitKey(1) & 0xFF == ord("q"):
+                #     break
 
     cap.release()
     if writer:
         writer.release()
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
 
     report_path = args.report or "identification_report.json"
     report = logbook.save(report_path)

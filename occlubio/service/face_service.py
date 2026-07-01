@@ -75,6 +75,13 @@ class FaceService:
                 g.add(emb, e.user.username, meta={"user_id": e.user_id})
             self.engine.gallery = g
             self.engine._buffers.clear()
+
+            gallery_file = self.cfg.gallery.path
+            gallery_dir = os.path.dirname(gallery_file)
+            if gallery_dir:
+                os.makedirs(gallery_dir, exist_ok=True)
+            g.save(gallery_file)
+            
             log.info("FAISS index rebuilt: %d enrolled users", len(g))
             return len(g)
 

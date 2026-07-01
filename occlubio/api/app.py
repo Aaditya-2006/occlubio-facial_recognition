@@ -30,6 +30,14 @@ from occlubio.service.face_service import (FaceService, decode_image, hash_passw
                                           verify_password)
 from occlubio.utils import ensure_dir, get_logger
 
+import asyncio
+from fastapi.responses import StreamingResponse
+
+# ... (your existing imports)
+
+# Global variable to hold the latest live frame from the worker
+latest_live_frame: bytes = b""
+
 log = get_logger("api")
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 UPLOAD_DIR = ensure_dir("data/uploads")
@@ -171,6 +179,11 @@ def remove_participant(user_id: int, caller: User = Depends(require_authority),
     db.delete(target)            # cascade removes the Enrollment row
     db.commit()
     service.rebuild_index(db)    # face template gone from FAISS too
+    gallery_file = service.cfg.gallery.path
+    gallery_dir = os.path.dirname(gallery_file)
+    if gallery_dir:  # If there is a folder path, ensure it exists
+        os.makedirs(gallery_dir, exist_ok=True)
+    engine.gallery.save(service.cfg.gallery.path)
     log.info("authority %s removed participant %s (id=%d)", caller.username, username, user_id)
     return {"removed": user_id, "username": username}
 
@@ -316,3 +329,25 @@ def job_video(job_id: int, token: Optional[str] = None,
         media_type="video/mp4",
         filename=f"identification_job_{job_id}.mp4",
     )
+
+@app.post("/api/live/push")
+async def receive_live_frame(file: UploadFile = File(...)):
+    """Receives the latest processed frame from recognize_video.py"""
+    global latest_live_frame
+    latest_live_frame = await file.read()
+    return {"status": "ok"}
+
+async def generate_live_stream():
+    """Generator yielding JPEG frames for MJPEG streaming"""
+    global latest_live_frame
+    while True:
+        if latest_live_frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + latest_live_frame + b'\r\n')
+        # Sleep slightly to prevent maxing out the CPU loop (yields ~20-30 FPS)
+        await asyncio.sleep(0.04) 
+
+@app.get("/api/live/stream")
+async def stream_live_video():
+    """Endpoint the browser calls to watch the live video"""
+    return StreamingResponse(generate_live_stream(), media_type="multipart/x-mixed-replace; boundary=frame")

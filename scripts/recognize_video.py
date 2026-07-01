@@ -11,10 +11,13 @@ import time
 
 import cv2
 
+import os
+
 from occlubio import load_config
 from occlubio.gallery import FaissGallery
 from occlubio.pipeline import RecognitionEngine
 from occlubio.utils import draw_results, get_logger
+import requests
 
 log = get_logger("recognize_video")
 
@@ -39,6 +42,10 @@ def main():
     gallery_path = args.gallery or cfg.gallery.path
     engine = RecognitionEngine(cfg, gallery=FaissGallery.load_or_new(gallery_path, cfg.recognition.embedding_dim))
 
+    last_gallery_mtime = 0
+    if os.path.exists(gallery_path):
+        last_gallery_mtime = os.path.getmtime(gallery_path)
+
     cap = _open(args.source)
     if not cap.isOpened():
         raise SystemExit(f"cannot open source: {args.source}")
@@ -60,6 +67,15 @@ def main():
         frame_no += 1
         if frame_no % max(1, args.stride) != 0:   # skip frames for CPU speedup
             continue
+
+        if frame_no % 30 == 0 and os.path.exists(gallery_path):
+            current_mtime = os.path.getmtime(gallery_path)
+            if current_mtime > last_gallery_mtime:
+                log.info("New enrollment detected! Reloading Faiss gallery into RAM...")
+                # Update the engine's memory without reloading the heavy ONNX models
+                engine.gallery = FaissGallery.load_or_new(gallery_path, cfg.recognition.embedding_dim)
+                last_gallery_mtime = current_mtime
+
         t = time.time()
         results = engine.process_frame(frame)
         seen_ids.update(f.identity for f in results if f.identity != "unknown")
@@ -69,6 +85,14 @@ def main():
 
         if cfg.engine.draw or writer or not args.no_display:
             vis = draw_results(frame, results)
+            ret, buffer = cv2.imencode('.jpg', vis, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if ret:
+                try:
+                    # Send frame to your running app.py
+                    files = {"file": ("frame.jpg", buffer.tobytes(), "image/jpeg")}
+                    requests.post("http://127.0.0.1:8000/api/live/push", files=files, timeout=0.1)
+                except requests.exceptions.RequestException:
+                    pass # Ignore if app.py is momentarily busy
             cv2.putText(vis, f"{ema_ms:.1f} ms/frame  {1000.0/max(ema_ms,1e-3):.1f} FPS",
                         (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             if writer:

@@ -43,9 +43,9 @@ class RecognitionEngine:
         self.recognizer = None
         if custom:
             from occlubio.pipeline.recognizer import CustomRecognizer
-
+            
             self.recognizer = CustomRecognizer(custom, providers=list(cfg.device.providers))
-
+            
         self.quality = FaceQualityGate(cfg)
         self.occlusion = OcclusionEstimator(cfg.occlusion.enabled)
         self.antispoof = AntiSpoof(cfg)

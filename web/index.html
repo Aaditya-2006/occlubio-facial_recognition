@@ -89,6 +89,18 @@
         <div class="stat"><div class="k">Authorities</div><div class="v" id="s_auth">–</div></div>
         <div class="stat"><div class="k">Identify jobs</div><div class="v" id="s_jobs">0</div></div>
       </div>
+
+      <div class="card">
+        <div class="row" style="justify-content: space-between;">
+          <h2>Live Surveillance Feed</h2>
+          <span class="pill on" style="animation: pulse 2s infinite;">🔴 LIVE</span>
+        </div>
+        <p class="hint">Real-time AI pipeline stream processed by the DGX Spark.</p>
+        <div style="background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px; text-align: center;">
+          <img src="/api/live/stream" alt="Waiting for DGX stream... Run recognize_video.py to connect." style="width: 100%; max-width: 800px; border-radius: 6px;">
+        </div>
+      </div>
+
       <div class="card">
         <h2>Operator console</h2>
         <p class="hint">You are signed in as an <b>authority</b>. You can run video identification against the enrolled gallery and review all registered subjects. Processing is CPU-bound here — raise the frame stride for speed.</p>
