@@ -2,7 +2,7 @@
 
 **Project Report**
 
-Author: Shourya Pandey
+Author: Shashwat Pandey and Aaditya Raj
 Institution: IIT (BHU)
 Date: 17 June 2026
 
